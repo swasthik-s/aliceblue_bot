@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Top Trade Picks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans p-6">
+
+<h2 class="text-2xl font-bold mb-6">📈 Bot-Selected Trade Candidates</h2>
+
+{% if stocks %}
+<form action="/trade-top-picks" method="post">
+    <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden shadow text-sm">
+        <thead class="text-gray-300 border-b border-gray-700">
+        <tr>
+            <th class="py-2 px-4 text-left">Symbol</th>
+            <th class="py-2 px-4 text-left">LTP</th>
+            <th class="py-2 px-4 text-left">RSI</th>
+            <th class="py-2 px-4 text-left">MACD</th>
+            <th class="py-2 px-4 text-left">Signal</th>
+            <th class="py-2 px-4 text-left">Reco</th>
+            <th class="py-2 px-4 text-left">Time</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for stock in stocks %}
+        <tr class="border-b border-gray-700 hover:bg-gray-700/50">
+            <td class="py-2 px-4 font-medium">{{ stock.symbol }}</td>
+            <td class="py-2 px-4">₹{{ stock.ltp }}</td>
+            <td class="py-2 px-4">{{ stock.rsi }}</td>
+            <td class="py-2 px-4">{{ stock.macd }}</td>
+            <td class="py-2 px-4">{{ stock.signal }}</td>
+            <td class="py-2 px-4 font-bold {% if stock.recommendation == 'STRONG_BUY' %}text-green-400{% else %}text-yellow-300{% endif %}">
+                {{ stock.recommendation }}
+            </td>
+            <td class="py-2 px-4">{{ stock.timestamp.split("T")[1][:5] }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <button class="mt-6 bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded text-white text-lg">🚀 Trade Top Picks</button>
+</form>
+{% else %}
+<div class="text-red-400 bg-gray-800 p-4 rounded shadow-lg mt-4">
+    ⚠️ No top picks available right now.<br/>
+    <span class="text-gray-400 text-sm">Bot may be scanning, or no strong setups exist currently.</span>
+</div>
+{% endif %}
+
+<a class="inline-block mt-6 text-blue-400 hover:text-blue-200" href="/">⬅ Back to Home</a>
+</body>
+</html>

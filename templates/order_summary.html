@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Order Summary</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans p-6">
+
+<h2 class="text-2xl font-bold mb-6">📦 Order Configuration Summary</h2>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    {% for order in orders %}
+    <div class="bg-gray-800 p-4 rounded shadow">
+        <p class="text-xl font-semibold text-yellow-400 mb-2">🟢 {{ order.symbol }}</p>
+        <ul class="space-y-1 text-sm text-gray-300">
+            <li><b>Qty:</b> {{ order.qty }}</li>
+            <li><b>Entry Price:</b> ₹{{ order.entry }}</li>
+            <li><b>Target Price:</b> ₹{{ order.target }}</li>
+            <li><b>Stop Loss:</b> ₹{{ order.stoploss }}</li>
+            <li><b>Order Type:</b> {{ order.order_type }}</li>
+            <li><b>Total Cost:</b> ₹{{ order.total_cost }}</li>
+            <li><b>Expected Profit:</b> ₹{{ order.reward }}</li>
+            <li><b>Max Risk:</b> ₹{{ order.risk }}</li>
+        </ul>
+    </div>
+    {% endfor %}
+</div>
+
+<form action="/confirm-orders" method="post">
+    <button class="mt-6 bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded text-white text-lg">🚀 Confirm & Execute Orders
+    </button>
+</form>
+
+<a class="inline-block mt-4 text-blue-400 hover:text-blue-200" href="/">⬅ Back to Home</a>
+</body>
+</html>
