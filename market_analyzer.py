@@ -1,69 +1,71 @@
-import json
+import pandas as pd
+import requests
+import time
+import matplotlib.pyplot as plt
 from datetime import datetime
 
-from tradingview_ta import TA_Handler, Interval
+TARGET_SYMBOL = "NIFTY"
+OPTION_TYPE = "CE"
+EXCHANGE = "NFO"
+LOT_SIZE = 50  # For NIFTY
 
-# ✅ Predefined top NSE stocks (can be replaced with dynamic in future)
-NSE_TOP_25 = [
-    "RELIANCE", "TCS", "INFY", "SBIN", "HDFCBANK", "ICICIBANK", "AXISBANK",
-    "ITC", "LT", "ADANIENT", "WIPRO", "HCLTECH", "SUNPHARMA", "TECHM",
-    "TATAMOTORS", "MARUTI", "POWERGRID", "COALINDIA", "TITAN", "ONGC",
-    "NTPC", "BAJFINANCE", "HINDUNILVR", "BHARTIARTL", "ULTRACEMCO"
-]
+# 🧠 Convert human date to UNIX timestamp in milliseconds
+def to_unix_millis(date_str):
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    return int(time.mktime(dt.timetuple()) * 1000)
 
+# 🛰️ Fetch historical option data from AliceBlue AI Chart API
+def fetch_historical_data(token, from_date, to_date, resolution="D"):
+    url = "https://ant.aliceblueonline.com/rest/AliceBlueAPIService/chart/history"
+    payload = {
+        "token": str(token),
+        "resolution": resolution,
+        "from": str(to_unix_millis(from_date)),
+        "to": str(to_unix_millis(to_date)),
+        "exchange": EXCHANGE
+    }
+    res = requests.post(url, json=payload)
+    data = res.json()
+    if data.get("stat") != "Ok":
+        raise Exception(f"Failed to fetch: {data.get('emsg')}")
+    return pd.DataFrame(data['result'])
 
-def fetch_indicators_from_tv(symbols):
-    picks = []
+# 💹 Backtest butterfly strategy on downloaded data
+def run_butterfly_backtest(df, lower_strike, atm_strike, upper_strike):
+    if df.empty:
+        print("⚠️ No data to backtest.")
+        return
 
-    for symbol in symbols:
-        try:
-            handler = TA_Handler(
-                symbol=symbol,
-                screener="india",  # ✅ Use India screener
-                exchange="NSE",  # ✅ Ensure NSE exchange
-                interval=Interval.INTERVAL_1_HOUR
-            )
+    net_cost = df['close'].iloc[-1]  # Assume today's premium as cost
+    payoff = max(0, atm_strike - lower_strike) - 2 * max(0, atm_strike - atm_strike) + max(0, atm_strike - upper_strike)
+    capital = 25000
+    lots = 1
+    total_cost = net_cost * LOT_SIZE * lots
+    total_payoff = payoff * LOT_SIZE * lots
+    pnl = total_payoff - total_cost
 
-            analysis = handler.get_analysis()
-            reco = analysis.summary.get("RECOMMENDATION", "NEUTRAL")
+    print("\n📊 Butterfly Strategy Result")
+    print(f"Strikes: {lower_strike}-{atm_strike}-{upper_strike}")
+    print(f"Net Cost: ₹{net_cost:.2f} | Payoff: ₹{payoff:.2f} | PnL: ₹{pnl:.2f}")
 
-            if reco not in ["BUY", "STRONG_BUY"]:
-                continue
+    return {
+        "Strikes": f"{lower_strike}-{atm_strike}-{upper_strike}",
+        "Cost": net_cost,
+        "Payoff": payoff,
+        "PnL": pnl
+    }
 
-            indicators = analysis.indicators
+# --- Main Example Usage ---
+# 📌 You should replace 'token' with correct option token from contract master
+option_token = 123456  # Placeholder
+from_date = "2024-06-01"
+to_date = "2024-06-30"
 
-            picks.append({
-                "symbol": symbol,
-                "ltp": round(indicators.get("close", 0), 2),
-                "rsi": round(indicators.get("RSI", 0), 2),
-                "macd": round(indicators.get("MACD.macd", 0), 2),
-                "signal": round(indicators.get("MACD.signal", 0), 2),
-                "recommendation": reco,
-                "timestamp": datetime.now().strftime("%H:%M")
-            })
+try:
+    hist_df = fetch_historical_data(option_token, from_date, to_date)
+    print("✅ Fetched historical data:")
+    print(hist_df.head())
 
-        except Exception as e:
-            print(f"⚠️ Skipped {symbol}: {e}")
-            continue
-
-    print(f"✅ Final NSE trade candidates: {len(picks)}")
-    return picks
-
-
-def scan_once():
-    print("🔁 Running NSE-based TradingView Analyzer...")
-
-    picks = fetch_indicators_from_tv(NSE_TOP_25)
-
-    if picks:
-        with open("top_stocks.json", "w") as f:
-            json.dump(picks, f, indent=2)
-        print(f"📁 Saved {len(picks)} picks to top_stocks.json")
-    else:
-        print("⚠️ No BUY/STRONG_BUY candidates found.")
-
-    return picks
-
-
-if __name__ == "__main__":
-    scan_once()
+    result = run_butterfly_backtest(hist_df, 24500, 24750, 25000)
+except Exception as e:
+    print(f"❌ Error: {e}")
